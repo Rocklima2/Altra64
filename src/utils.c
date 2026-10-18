@@ -275,16 +275,13 @@ int getEeprom16k(  uint8_t *buffer){
 
 int getFlashRAM( uint8_t *buffer){
     evd_setSaveType(SAVE_TYPE_SRAM128); //2
-    sleep(FF_MAX_SS);
-    delay(200);
+    sleep(200);
 
     int s = getSRAM(buffer, SAVE_SIZE_SRAM128);
     data_cache_hit_writeback_invalidate(buffer, SAVE_SIZE_SRAM128);
 
-    sleep(FF_MAX_SS);
-    delay(100);
+    sleep(200);
     evd_setSaveType(SAVE_TYPE_FLASH); //5
-    delay(100);
 
     return 1;
 }
