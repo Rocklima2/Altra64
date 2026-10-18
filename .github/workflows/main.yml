@@ -1,0 +1,30 @@
+name: Build Oficial Altra64
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-project:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Coletar codigo fonte
+      uses: actions/checkout@v4
+
+    # Usa o container mantido e testado especificamente para compilar o Altra64
+    - name: Compilar via Altra64-Dev Toolchain
+      run: |
+        docker run --rm -v ${{ github.workspace }}:/build moparisthebest/altra64-dev make
+
+    - name: Salvar Menu Compilado (.v64 / .z64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: Altra64-Menu-OS64
+        path: |
+          bin/
+          *.v64
+          *.z64
+          *.n64
+        if-no-files-found: warn
