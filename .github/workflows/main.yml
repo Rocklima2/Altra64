@@ -16,7 +16,7 @@ jobs:
     # Usa o container mantido e testado especificamente para compilar o Altra64
     - name: Compilar via Altra64-Dev Toolchain
       run: |
-        docker run --rm -v ${{ github.workspace }}:/build moparisthebest/altra64-dev make
+        docker run --rm -v ${{ github.workspace }}:/build ghcr.io/ariahiro64/altra64:master make
 
     - name: Salvar Menu Compilado (.v64 / .z64)
       uses: actions/upload-artifact@v4
