@@ -404,6 +404,7 @@ int setFlashRAM(uint8_t *buffer){
         
         // Pequeno delay em milissegundos para dar tempo à FPGA/Chip processar a gravação física
         sleep(2); 
+    }
 }
 
 void setSDTiming(void){
