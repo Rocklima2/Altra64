@@ -278,32 +278,23 @@ int getEeprom16k(  uint8_t *buffer){
 }
 
 int getFlashRAM( uint8_t *buffer){
-    // 1. Configura a FPGA do EverDrive em modo FLASH puro
-    evd_setSaveType(SAVE_TYPE_FLASH); 
-    sleep(100);
+    evd_setSaveType( SAVE_TYPE_FLASH);
+    sleep( 100);
 
-    // 2. Envia o comando de leitura obrigatório
-    while (dma_busy());
-    io_write(FLASH_REG_CMD, FLASH_CMD_READ); 
+    while ( dma_busy());
+    io_write( FLASH_REG_CMD, FLASH_CMD_READ);
 
-    // 3. Ajusta as latências do barramento PI para FlashRAM
-    io_write(PI_BSD_DOM2_LAT_REG, 0x05);
-    io_write(PI_BSD_DOM2_PWD_REG, 0x0C);
-    io_write(PI_BSD_DOM2_PGS_REG, 0x0D);
-    io_write(PI_BSD_DOM2_RLS_REG, 0x02);
+    io_write( PI_BSD_DOM2_LAT_REG, 0x05);
+    io_write( PI_BSD_DOM2_PWD_REG, 0x0C);
+    io_write( PI_BSD_DOM2_PGS_REG, 0x0D);
+    io_write( PI_BSD_DOM2_RLS_REG, 0x02);
 
-    // 4. Executa a leitura linear (Ajustado para dma_read_async da sua SDK)
-    while (dma_busy());
-    dma_write( buffer + ( page * 128), FLASHRAM_ADDR, 128);
-    while (dma_busy());
-    sleep( 2);
+    while ( dma_busy());
+    dma_read( buffer, FLASHRAM_ADDR, 128 * 1024);
+    while ( dma_busy());
 
-    // 5. Limpa e invalida o cache de dados do processador VR4300
-    data_cache_hit_writeback_invalidate(buffer, 128 * 1024);
-
-    // 6. Restaura os timings originais do EverDrive
+    data_cache_hit_writeback_invalidate( buffer, 128 * 1024);
     restoreTiming();
-    
     return 1;
 }
 
