@@ -292,13 +292,14 @@ int getFlashRAM( uint8_t *buffer){
     io_write(PI_BSD_DOM2_PGS_REG, 0x0D);
     io_write(PI_BSD_DOM2_RLS_REG, 0x02);
 
-    // 4. Limpa e invalida o cache de dados do processador VR4300
-    data_cache_hit_writeback_invalidate(buffer, 128 * 1024);
+    // 4. Executa a leitura linear (Ajustado para dma_read_async da sua SDK)
+    while (dma_busy());
+    dma_write( buffer + ( page * 128), FLASHRAM_ADDR, 128);
+    while (dma_busy());
+    sleep( 2);
 
-    // 5. Executa a leitura linear (Ajustado para dma_read_async da sua SDK)
-    while (dma_busy());
-    dma_read(buffer, FLASHRAM_ADDR, 128 * 1024);
-    while (dma_busy());
+    // 5. Limpa e invalida o cache de dados do processador VR4300
+    data_cache_hit_writeback_invalidate(buffer, 128 * 1024);
 
     // 6. Restaura os timings originais do EverDrive
     restoreTiming();
@@ -386,11 +387,12 @@ int setFlashRAM(uint8_t *buffer){
     for (int page = 0; page < 1024; page++) {
         
         while (dma_busy());
-        io_write(FLASH_REG_CMD, FLASH_CMD_WRITE | (page & 0xFFFF));
+        // Envia o comando de escrita deslocando o índice da página para o local correto
+        io_write(FLASH_REG_CMD, FLASH_CMD_WRITE | (page << 16));
 
-        // Executa a escrita bruta (Ajustado para dma_write_async da sua SDK)
+        // Executa a escrita avançando o buffer e o endereço físico de destino
         while (dma_busy());
-        dma_write(buffer + (page * 128), FLASHRAM_ADDR, 128);
+        dma_write(buffer + (page * 128), FLASHRAM_ADDR + (page * 128), 128);
         while (dma_busy());
         
         sleep(2); 
