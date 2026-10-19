@@ -23,6 +23,10 @@ extern short int boot_country;
 static u8 __attribute__((aligned(16))) dmaBuf[128*1024];
 static volatile struct _PI_regs_s * const _PI_regs = (struct _PI_regs_s *)0xa4600000;
 
+#define FLASHRAM_ADDR        0x08000000 
+#define FLASH_REG_CMD        0xB8000000 
+#define FLASH_CMD_READ       0xF0000000 
+#define FLASH_CMD_WRITE      0xB4000000 
 
 
 int get_cic_save(char *cartid, int *cic, int *save) {
