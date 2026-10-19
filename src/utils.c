@@ -274,15 +274,41 @@ int getEeprom16k(  uint8_t *buffer){
 }
 
 int getFlashRAM( uint8_t *buffer){
-    evd_setSaveType(SAVE_TYPE_SRAM128); //2
-    sleep(200);
+    
+    // 1. Mantém o tipo nativo em FLASH para a FPGA abrir o barramento correto
+    evd_setSaveType(SAVE_TYPE_FLASH); 
+    sleep(100);
 
-    int s = getSRAM(buffer, SAVE_SIZE_SRAM128);
-    data_cache_hit_writeback_invalidate(buffer, SAVE_SIZE_SRAM128);
+    // 2. Coloca o chip FlashRAM em modo de LEITURA enviando o comando nativo (0xF0000000)
+    // Sem isso, o barramento fica travado em modo de status e não envia os dados do save
+    while (dma_busy());
+    IO_WRITE(0xB8000000, 0xF0000000); 
 
-    sleep(200);
-    evd_setSaveType(SAVE_TYPE_FLASH); //5
+    // 3. Ajusta temporariamente os timings da Interface Periférica (PI) para o protocolo FlashRAM
+    IO_WRITE(PI_BSD_DOM2_LAT_REG, 0x05);
+    IO_WRITE(PI_BSD_DOM2_PWD_REG, 0x0C);
+    IO_WRITE(PI_BSD_DOM2_PGS_REG, 0x0D);
+    IO_WRITE(PI_BSD_DOM2_RLS_REG, 0x02);
 
+    // 4. Certifica-se de que o cache do N64 não vai interferir na leitura física
+    data_cache_hit_writeback_invalidate(buffer, 128 * 1024);
+
+    // 5. Executa a cópia física via DMA (A FlashRAM permite leitura linear de 128KB inteiros)
+    // 0x08000000 é o endereço físico do chip de Save no Domínio 2 do N64
+    while (dma_busy());
+    PI_DMAFromSRAM(buffer, 0x08000000, 128 * 1024); 
+    while (dma_busy());
+
+    // 6. Restaura os timings padrão do EverDrive para o menu continuar funcionando
+    IO_WRITE(PI_BSD_DOM1_LAT_REG, 0x40);
+    IO_WRITE(PI_BSD_DOM1_PWD_REG, 0x12);
+    IO_WRITE(PI_BSD_DOM1_PGS_REG, 0x07);
+    IO_WRITE(PI_BSD_DOM1_RLS_REG, 0x03);
+    IO_WRITE(PI_BSD_DOM2_LAT_REG, 0x40);
+    IO_WRITE(PI_BSD_DOM2_PWD_REG, 0x12);
+    IO_WRITE(PI_BSD_DOM2_PGS_REG, 0x07);
+    IO_WRITE(PI_BSD_DOM2_RLS_REG, 0x03);
+    
     return 1;
 }
 
@@ -348,16 +374,36 @@ int setEeprom16k(uint8_t *buffer){
 
 //isn't working nor finished
 int setFlashRAM(uint8_t *buffer){
-    evd_setSaveType(SAVE_TYPE_SRAM128); //2
-    sleep(FF_MAX_SS);
+// 1. Mantém o tipo nativo em FLASH para a FPGA abrir o barramento de gravação correto
+    evd_setSaveType(SAVE_TYPE_FLASH); 
+    sleep(100);
 
-    int s = setSRAM(buffer, SAVE_SIZE_SRAM128);
-    data_cache_hit_writeback_invalidate(buffer,SAVE_SIZE_SRAM128);
+    // 2. Ajusta temporariamente os timings da Interface Periférica (PI) para o protocolo FlashRAM
+    while (dma_busy());
+    IO_WRITE(PI_BSD_DOM2_LAT_REG, 0x05);
+    IO_WRITE(PI_BSD_DOM2_PWD_REG, 0x0C);
+    IO_WRITE(PI_BSD_DOM2_PGS_REG, 0x0D);
+    IO_WRITE(PI_BSD_DOM2_RLS_REG, 0x02);
 
-    sleep(FF_MAX_SS);
-    evd_setSaveType(SAVE_TYPE_FLASH); //5
+    // 3. Garante que os dados mais recentes do buffer na RAM do N64 sejam enviados ao hardware
+    data_cache_hit_writeback(buffer, 128 * 1024);
 
-    return 1;
+    // 4. Gravação por Blocos: A FlashRAM do N64 exige escrita em páginas de 128 bytes.
+    // Para 128 KB totais, precisamos gravar exatamente 1024 páginas (131072 / 128 = 1024).
+    for (int page = 0; page < 1024; page++) {
+        
+        // Envia o comando de escrita (0xB4000000) combinado com o número da página atual
+        while (dma_busy());
+        IO_WRITE(0xB8000000, 0xB4000000 | (page & 0xFFFF));
+
+        // Executa o DMA de 128 bytes da RAM do N64 para o endereço da FlashRAM (0x08000000)
+        // Avançamos o ponteiro do buffer em 128 bytes a cada repetição do loop
+        while (dma_busy());
+        PI_DMAToSRAM(buffer + (page * 128), 0x08000000, 128);
+        while (dma_busy());
+        
+        // Pequeno delay em milissegundos para dar tempo à FPGA/Chip processar a gravação física
+        sleep(2); 
 }
 
 void setSDTiming(void){
