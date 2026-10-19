@@ -274,15 +274,15 @@ int getEeprom16k(  uint8_t *buffer){
 }
 
 int getFlashRAM( uint8_t *buffer){
-    // 1. Configura a FPGA do EverDrive em modo FLASH puro (evita comportamento de SRAM)
+    // 1. Configura a FPGA do EverDrive em modo FLASH puro
     evd_setSaveType(SAVE_TYPE_FLASH); 
     sleep(100);
 
-    // 2. Envia o comando de leitura obrigatório para o registrador de controle do chip
+    // 2. Envia o comando de leitura obrigatório
     while (dma_busy());
     io_write(FLASH_REG_CMD, FLASH_CMD_READ); 
 
-    // 3. Ajusta de forma estrita as latências do barramento PI para FlashRAM
+    // 3. Ajusta as latências do barramento PI para FlashRAM
     io_write(PI_BSD_DOM2_LAT_REG, 0x05);
     io_write(PI_BSD_DOM2_PWD_REG, 0x0C);
     io_write(PI_BSD_DOM2_PGS_REG, 0x0D);
@@ -291,12 +291,12 @@ int getFlashRAM( uint8_t *buffer){
     // 4. Limpa e invalida o cache de dados do processador VR4300
     data_cache_hit_writeback_invalidate(buffer, 128 * 1024);
 
-    // 5. Executa a leitura linear bruta dos 128KB direto do barramento físico da FlashRAM
+    // 5. Executa a leitura linear (Ajustado para dma_read_async da sua SDK)
     while (dma_busy());
-    dma_read_raw_async(buffer, FLASHRAM_ADDR, 128 * 1024);
+    dma_read_async(buffer, FLASHRAM_ADDR, 128 * 1024);
     while (dma_busy());
 
-    // 6. Restaura os timings originais do EverDrive para o menu não travar
+    // 6. Restaura os timings originais do EverDrive
     restoreTiming();
     
     return 1;
@@ -368,33 +368,31 @@ int setFlashRAM(uint8_t *buffer){
     evd_setSaveType(SAVE_TYPE_FLASH); 
     sleep(100);
 
-    // 2. Ajusta as latências do barramento PI para os ciclos de escrita de FlashRAM
+    // 2. Ajusta as latências do barramento PI para escrita
     while (dma_busy());
     io_write(PI_BSD_DOM2_LAT_REG, 0x05);
     io_write(PI_BSD_DOM2_PWD_REG, 0x0C);
     io_write(PI_BSD_DOM2_PGS_REG, 0x0D);
     io_write(PI_BSD_DOM2_RLS_REG, 0x02);
 
-    // 3. Despeja o cache da CPU para garantir que a RAM física tenha os dados corretos do save
+    // 3. Despeja o cache da CPU para a RAM física
     data_cache_hit_writeback(buffer, 128 * 1024);
 
-    // 4. Loop de gravação em páginas (blocos estritos de 128 bytes exigidos pelo hardware)
+    // 4. Loop de gravação em páginas de 128 bytes
     for (int page = 0; page < 1024; page++) {
         
-        // Avisa ao chip qual o ID da página física de 128 bytes que receberá os dados
         while (dma_busy());
         io_write(FLASH_REG_CMD, FLASH_CMD_WRITE | (page & 0xFFFF));
 
-        // Executa a escrita bruta via DMA assíncrono diretamente para a FlashRAM
+        // Executa a escrita bruta (Ajustado para dma_write_async da sua SDK)
         while (dma_busy());
-        dma_write_raw_async(buffer + (page * 128), FLASHRAM_ADDR, 128);
+        dma_write_async(buffer + (page * 128), FLASHRAM_ADDR, 128);
         while (dma_busy());
         
-        // Delay necessário de 2ms para a memória física ou a FPGA consolidar o bloco gravado
         sleep(2); 
     }
 
-    // 5. Retorna o chip de save para o modo de leitura padrão após encerrar todas as páginas
+    // 5. Retorna o chip de save para o modo de leitura padrão
     while (dma_busy());
     io_write(FLASH_REG_CMD, FLASH_CMD_READ); 
 
