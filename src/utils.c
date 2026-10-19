@@ -374,7 +374,7 @@ int setEeprom16k(uint8_t *buffer){
 
 //isn't working nor finished
 int setFlashRAM(uint8_t *buffer){
-// 1. Mantém o tipo nativo em FLASH para a FPGA abrir o barramento de gravação correto
+    // 1. Mantém o tipo nativo em FLASH para a FPGA abrir o barramento de gravação correto
     evd_setSaveType(SAVE_TYPE_FLASH); 
     sleep(100);
 
@@ -404,7 +404,23 @@ int setFlashRAM(uint8_t *buffer){
         
         // Pequeno delay em milissegundos para dar tempo à FPGA/Chip processar a gravação física
         sleep(2); 
-    }
+    } // <-- AQUI FECHA O FOR CORRETAMENTE
+
+    // 5. Após terminar de gravar todas as páginas, coloca o chip de volta em modo de leitura padrão
+    while (dma_busy());
+    IO_WRITE(0xB8000000, 0xF0000000); 
+
+    // 6. Restaura os timings padrão do EverDrive para o menu continuar funcionando
+    IO_WRITE(PI_BSD_DOM1_LAT_REG, 0x40);
+    IO_WRITE(PI_BSD_DOM1_PWD_REG, 0x12);
+    IO_WRITE(PI_BSD_DOM1_PGS_REG, 0x07);
+    IO_WRITE(PI_BSD_DOM1_RLS_REG, 0x03);
+    IO_WRITE(PI_BSD_DOM2_LAT_REG, 0x40);
+    IO_WRITE(PI_BSD_DOM2_PWD_REG, 0x12);
+    IO_WRITE(PI_BSD_DOM2_PGS_REG, 0x07);
+    IO_WRITE(PI_BSD_DOM2_RLS_REG, 0x03);
+    
+    return 1;
 }
 
 void setSDTiming(void){
