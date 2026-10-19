@@ -297,7 +297,7 @@ int getFlashRAM( uint8_t *buffer){
 
     // 5. Executa a leitura linear (Ajustado para dma_read_async da sua SDK)
     while (dma_busy());
-    dma_read_async(buffer, FLASHRAM_ADDR, 128 * 1024);
+    dma_read(buffer, FLASHRAM_ADDR, 128 * 1024);
     while (dma_busy());
 
     // 6. Restaura os timings originais do EverDrive
@@ -390,7 +390,7 @@ int setFlashRAM(uint8_t *buffer){
 
         // Executa a escrita bruta (Ajustado para dma_write_async da sua SDK)
         while (dma_busy());
-        dma_write_async(buffer + (page * 128), FLASHRAM_ADDR, 128);
+        dma_write(buffer + (page * 128), FLASHRAM_ADDR, 128);
         while (dma_busy());
         
         sleep(2); 
