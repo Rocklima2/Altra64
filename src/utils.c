@@ -382,62 +382,23 @@ int setEeprom16k(uint8_t *buffer){
 
 //isn't working nor finished
 int setFlashRAM(uint8_t *buffer){
-    // Buffer temporário alinhado a 16 bytes para a página de 128 bytes (evita falhas de DMA)
-    static uint8_t page_buf[128] __attribute__((aligned(16)));
+    evd_setSaveType( SAVE_TYPE_FLASH);
+    sleep( 100);
 
-    // 1. Configura a FPGA do EverDrive em modo FLASH puro
-    evd_setSaveType(SAVE_TYPE_FLASH); 
-    sleep(100);
+    while ( dma_busy());
+    io_write( FLASH_REG_CMD, FLASH_CMD_READ);
 
-    // 2. Ajusta as latências do barramento PI para escrita
-    while (dma_busy());
-    io_write(PI_BSD_DOM2_LAT_REG, 0x05);
-    io_write(PI_BSD_DOM2_PWD_REG, 0x0C);
-    io_write(PI_BSD_DOM2_PGS_REG, 0x0D);
-    io_write(PI_BSD_DOM2_RLS_REG, 0x02);
+    io_write( PI_BSD_DOM2_LAT_REG, 0x05);
+    io_write( PI_BSD_DOM2_PWD_REG, 0x0C);
+    io_write( PI_BSD_DOM2_PGS_REG, 0x0D);
+    io_write( PI_BSD_DOM2_RLS_REG, 0x02);
 
-    // 3. Despeja o cache da CPU para a RAM física antes de processar
-    data_cache_hit_writeback(buffer, 128 * 1024);
+    while ( dma_busy());
+    dma_read( buffer, FLASHRAM_ADDR, 128 * 1024);
+    while ( dma_busy());
 
-    // 4. Loop de gravação em páginas de 128 bytes
-    for (int page = 0; page < 1024; page++) {
-        
-        // CORREÇÃO: Aplica o Byte-Swap de 32 bits nos dados da página atual
-        // Move os dados invertidos para o nosso buffer temporário perfeitamente alinhado
-        uint32_t *src = (uint32_t *)(buffer + (page * 128));
-        uint32_t *dst = (uint32_t *)page_buf;
-        
-        for (int i = 0; i < 32; i++) { // 32 inteiros de 4 bytes = 128 bytes
-            uint32_t val = src[i];
-            // Inverte a ordem dos bytes (MIPS Big Endian <-> Flash Intel/Spansion Little Endian)
-            dst[i] = ((val & 0xFF000000) >> 24) |
-                     ((val & 0x00FF0000) >> 8)  |
-                     ((val & 0x0000FF00) << 8)  |
-                     ((val & 0x000000FF) << 24);
-        }
-
-        // Garante que os dados convertidos no buffer temporário saiam do cache para a RAM física
-        data_cache_hit_writeback(page_buf, 128);
-
-        while (dma_busy());
-        // Envia o comando de escrita deslocando o índice da página para o local correto
-        io_write(FLASH_REG_CMD, FLASH_CMD_WRITE | (page << 16));
-
-        // Executa a escrita avançando o endereço físico de destino usando nosso buffer alinhado e invertido
-        while (dma_busy());
-        dma_write(page_buf, FLASHRAM_ADDR + (page * 128), 128);
-        while (dma_busy());
-        
-        sleep(2); 
-    }
-
-    // 5. Retorna o chip de save para o modo de leitura padrão
-    while (dma_busy());
-    io_write(FLASH_REG_CMD, FLASH_CMD_READ); 
-
-    // 6. Restaura as latências padrão do EverDrive
+    data_cache_hit_writeback_invalidate( buffer, 128 * 1024);
     restoreTiming();
-    
     return 1;
 }
 
