@@ -278,24 +278,29 @@ int getEeprom16k(  uint8_t *buffer){
 }
 
 int getFlashRAM( uint8_t *buffer){
-    // 1. Engana a FPGA do clone alterando temporariamente para SRAM128
-    evd_setSaveType( SAVE_TYPE_SRAM128); 
+    // 1. Antes de mudar o modo na FPGA, força o chip físico a entrar em modo de leitura
+    while ( dma_busy());
+    io_write( FLASH_REG_CMD, FLASH_CMD_READ);
+    sleep( 10); // Pequeno atraso para o chip processar o comando
+
+    // 2. Engana a FPGA do clone alterando temporariamente para SRAM128
+    evd_setSaveType( SAVE_TYPE_SRAM128);
     sleep( FF_MAX_SS); // Tempo de estabilização do Suprapote
 
-    // 2. Limpa o status do barramento PI para evitar vazamento de dados da ROM
+    // 3. Limpa o status do barramento PI para evitar vazamentos
     IO_WRITE( PI_STATUS_REG, 0x03);
     while ( dma_busy());
 
-    // 3. Executa a leitura linear e contínua (Método do Suprapote)
+    // 4. Executa a leitura linear e contínua original (que você sabe que não trava)
     int s = getSRAM( buffer, SAVE_SIZE_SRAM128);
 
-    // 4. Invalida o cache IMEDIATAMENTE após a leitura para a CPU ler os dados reais
+    // 5. Invalida o cache IMEDIATAMENTE após a leitura para a CPU validar os dados reais
     while ( dma_busy());
     data_cache_hit_writeback_invalidate( buffer, SAVE_SIZE_SRAM128);
 
-    // 5. Retorna a FPGA para o modo FLASH original antes de entregar ao jogo
+    // 6. Retorna a FPGA para o modo FLASH original antes de entregar ao jogo
     sleep( FF_MAX_SS);
-    evd_setSaveType( SAVE_TYPE_FLASH); 
+    evd_setSaveType( SAVE_TYPE_FLASH);
 
     return 1;
 }
