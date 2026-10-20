@@ -278,28 +278,25 @@ int getEeprom16k(  uint8_t *buffer){
 }
 
 int getFlashRAM( uint8_t *buffer){
-    // Configuração inicial do modo FLASH e ajuste de latências do barramento PI [Rocklima2/Altra64r](https://github.com)
-    evd_setSaveType( SAVE_TYPE_FLASH);
-    sleep( 100);
+    // 1. Engana a FPGA do clone alterando temporariamente para SRAM128
+    evd_setSaveType( SAVE_TYPE_SRAM128); 
+    sleep( FF_MAX_SS); // Tempo de estabilização do Suprapote
 
+    // 2. Limpa o status do barramento PI para evitar vazamento de dados da ROM
+    IO_WRITE( PI_STATUS_REG, 0x03);
     while ( dma_busy());
-    io_write( FLASH_REG_CMD, FLASH_CMD_READ);
-    io_write( PI_BSD_DOM2_LAT_REG, 0x05);
-    io_write( PI_BSD_DOM2_PWD_REG, 0x0C);
-    io_write( PI_BSD_DOM2_PGS_REG, 0x0D);
-    io_write( PI_BSD_DOM2_RLS_REG, 0x02);
 
-    // Manipulação de cache e leitura via DMA no buffer estático alinhado dmaBuf [Rocklima2/Altra64r](https://github.com)
-    data_cache_hit_writeback_invalidate( dmaBuf, 128 * 1024);
-    while ( dma_busy());
-    dma_read( dmaBuf, FLASHRAM_ADDR, 128 * 1024);
-    while ( dma_busy());
-    data_cache_hit_writeback_invalidate( dmaBuf, 128 * 1024);
+    // 3. Executa a leitura linear e contínua (Método do Suprapote)
+    int s = getSRAM( buffer, SAVE_SIZE_SRAM128);
 
-    // Cópia segura para o buffer de destino e restauração de tempos [Rocklima2/Altra64r](https://github.com)
-    memcpy( buffer, dmaBuf, 128 * 1024);
-    data_cache_hit_writeback( buffer, 128 * 1024);
-    restoreTiming();
+    // 4. Invalida o cache IMEDIATAMENTE após a leitura para a CPU ler os dados reais
+    while ( dma_busy());
+    data_cache_hit_writeback_invalidate( buffer, SAVE_SIZE_SRAM128);
+
+    // 5. Retorna a FPGA para o modo FLASH original antes de entregar ao jogo
+    sleep( FF_MAX_SS);
+    evd_setSaveType( SAVE_TYPE_FLASH); 
+
     return 1;
 }
 
@@ -365,23 +362,28 @@ int setEeprom16k(uint8_t *buffer){
 
 //isn't working nor finished
 int setFlashRAM(uint8_t *buffer){
-    evd_setSaveType( SAVE_TYPE_FLASH);
-    sleep( 100);
+    // 1. Altera temporariamente a FPGA para SRAM128 para permitir a escrita síncrona
+    evd_setSaveType( SAVE_TYPE_SRAM128); 
+    sleep( FF_MAX_SS);
 
-    while ( dma_busy());
-    io_write( FLASH_REG_CMD, FLASH_CMD_READ);
-
-    io_write( PI_BSD_DOM2_LAT_REG, 0x05);
-    io_write( PI_BSD_DOM2_PWD_REG, 0x0C);
-    io_write( PI_BSD_DOM2_PGS_REG, 0x0D);
-    io_write( PI_BSD_DOM2_RLS_REG, 0x02);
-
-    while ( dma_busy());
-    dma_read( buffer, FLASHRAM_ADDR, 128 * 1024);
+    // 2. Limpa o status do barramento PI antes de transmitir
+    IO_WRITE( PI_STATUS_REG, 0x03);
     while ( dma_busy());
 
-    data_cache_hit_writeback_invalidate( buffer, 128 * 1024);
-    restoreTiming();
+    // 3. Força os dados a irem do cache da CPU para a RAM física antes do envio
+    data_cache_hit_writeback( buffer, SAVE_SIZE_SRAM128);
+
+    // 4. Executa o upload linear contínuo dos dados para o cartucho
+    int s = setSRAM( buffer, SAVE_SIZE_SRAM128);
+
+    // 5. Sincroniza e limpa o cache após a gravação
+    while ( dma_busy());
+    data_cache_hit_writeback_invalidate( buffer, SAVE_SIZE_SRAM128);
+
+    // 6. Restaura a FPGA do EverDrive para o modo FLASH original
+    sleep( FF_MAX_SS);
+    evd_setSaveType( SAVE_TYPE_FLASH); 
+
     return 1;
 }
 
