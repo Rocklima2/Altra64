@@ -278,11 +278,10 @@ int getEeprom16k(  uint8_t *buffer){
 }
 
 int getFlashRAM( uint8_t *buffer){
-    // 1. Configura a FPGA do EverDrive em modo FLASH puro
+    // Configuração inicial do modo FLASH e ajuste de latências do barramento PI [Rocklima2/Altra64r](https://github.com)
     evd_setSaveType( SAVE_TYPE_FLASH);
     sleep( 100);
 
-    // 2. Ajusta as latências do barramento PI para leitura confiável
     while ( dma_busy());
     io_write( FLASH_REG_CMD, FLASH_CMD_READ);
     io_write( PI_BSD_DOM2_LAT_REG, 0x05);
@@ -290,32 +289,16 @@ int getFlashRAM( uint8_t *buffer){
     io_write( PI_BSD_DOM2_PGS_REG, 0x0D);
     io_write( PI_BSD_DOM2_RLS_REG, 0x02);
 
-    // 3. Executa um ÚNICO disparo de DMA de 128 KB (Rápido e Estável)
+    // Manipulação de cache e leitura via DMA no buffer estático alinhado dmaBuf [Rocklima2/Altra64r](https://github.com)
+    data_cache_hit_writeback_invalidate( dmaBuf, 128 * 1024);
     while ( dma_busy());
-    dma_read( buffer, FLASHRAM_ADDR, 128 * 1024);
+    dma_read( dmaBuf, FLASHRAM_ADDR, 128 * 1024);
     while ( dma_busy());
+    data_cache_hit_writeback_invalidate( dmaBuf, 128 * 1024);
 
-    // 4. Sincroniza o cache para garantir que a CPU veja os dados reais vindos do chip
-    data_cache_hit_writeback_invalidate( buffer, 128 * 1024);
-
-    // 5. CORREÇÃO: Loop de Byte-Swap feito 100% na memória RAM do N64
-    // Processa inteiros de 4 bytes (32 bits) ao invés de páginas de hardware
-    uint32_t * data32 = (uint32_t *) buffer;
-    int total_words = (128 * 1024) / 4; // 32768 palavras de 32 bits
-
-    for (int i = 0; i < total_words; i++) {
-        uint32_t val = data32[ i];
-        // Inverte a ordenação (Flash Intel/Spansion Little Endian -> MIPS Big Endian)
-        data32[ i] = ((val & 0xFF000000) >> 24) |
-                     ((val & 0x00FF0000) >> 8)  |
-                     ((val & 0x0000FF00) << 8)  |
-                     ((val & 0x000000FF) << 24);
-    }
-
-    // 6. Força o cache a descarregar os dados invertidos antes do FatFS criar o arquivo no SD
+    // Cópia segura para o buffer de destino e restauração de tempos [Rocklima2/Altra64r](https://github.com)
+    memcpy( buffer, dmaBuf, 128 * 1024);
     data_cache_hit_writeback( buffer, 128 * 1024);
-
-    // 7. Restaura as latências padrão do EverDrive
     restoreTiming();
     return 1;
 }
