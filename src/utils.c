@@ -278,53 +278,44 @@ int getEeprom16k(  uint8_t *buffer){
 }
 
 int getFlashRAM( uint8_t *buffer){
-    // Buffer temporário estático alinhado a 16 bytes para processar a página por DMA
-    static uint8_t page_buf __attribute__((aligned(16)));
-
     // 1. Configura a FPGA do EverDrive em modo FLASH puro
-    evd_setSaveType(SAVE_TYPE_FLASH);
-    sleep(100);
+    evd_setSaveType( SAVE_TYPE_FLASH);
+    sleep( 100);
 
     // 2. Ajusta as latências do barramento PI para leitura confiável
-    while (dma_busy());
-    io_write(FLASH_REG_CMD, FLASH_CMD_READ);
-    io_write(PI_BSD_DOM2_LAT_REG, 0x05);
-    io_write(PI_BSD_DOM2_PWD_REG, 0x0C);
-    io_write(PI_BSD_DOM2_PGS_REG, 0x0D);
-    io_write(PI_BSD_DOM2_RLS_REG, 0x02);
+    while ( dma_busy());
+    io_write( FLASH_REG_CMD, FLASH_CMD_READ);
+    io_write( PI_BSD_DOM2_LAT_REG, 0x05);
+    io_write( PI_BSD_DOM2_PWD_REG, 0x0C);
+    io_write( PI_BSD_DOM2_PGS_REG, 0x0D);
+    io_write( PI_BSD_DOM2_RLS_REG, 0x02);
 
-    // 3. Loop para ler a FlashRAM em páginas de 128 bytes e aplicar Byte-Swap
-    for (int page = 0; page < 1024; page++) {
-        while (dma_busy());
-        
-        // Invalida o cache do buffer temporário antes do DMA preenchê-lo
-        data_cache_hit_writeback_invalidate(page_buf, 128);
-        
-        // Puxa 128 bytes do endereço físico correspondente da FlashRAM para o buffer alinhado
-        dma_read(page_buf, FLASHRAM_ADDR + (page * 128), 128);
-        while (dma_busy());
+    // 3. Executa um ÚNICO disparo de DMA de 128 KB (Rápido e Estável)
+    while ( dma_busy());
+    dma_read( buffer, FLASHRAM_ADDR, 128 * 1024);
+    while ( dma_busy());
 
-        // Força a CPU a enxergar os dados físicos que acabaram de vir por DMA
-        data_cache_hit_writeback_invalidate(page_buf, 128);
+    // 4. Sincroniza o cache para garantir que a CPU veja os dados reais vindos do chip
+    data_cache_hit_writeback_invalidate( buffer, 128 * 1024);
 
-        // Aplica o Byte-Swap de 32 bits para ordenar os dados corretamente para o SD Card
-        uint32_t *src = (uint32_t *)page_buf;
-        uint32_t *dst = (uint32_t *)(buffer + (page * 128));
+    // 5. CORREÇÃO: Loop de Byte-Swap feito 100% na memória RAM do N64
+    // Processa inteiros de 4 bytes (32 bits) ao invés de páginas de hardware
+    uint32_t * data32 = (uint32_t *) buffer;
+    int total_words = (128 * 1024) / 4; // 32768 palavras de 32 bits
 
-        for (int i = 0; i < 32; i++) { // 32 inteiros de 4 bytes = 128 bytes
-            uint32_t val = src[i];
-            // Reorganiza a ordenação dos bytes (Flash Intel/Spansion Little Endian -> MIPS Big Endian)
-            dst[i] = ((val & 0xFF000000) >> 24) |
+    for (int i = 0; i < total_words; i++) {
+        uint32_t val = data32[ i];
+        // Inverte a ordenação (Flash Intel/Spansion Little Endian -> MIPS Big Endian)
+        data32[ i] = ((val & 0xFF000000) >> 24) |
                      ((val & 0x00FF0000) >> 8)  |
                      ((val & 0x0000FF00) << 8)  |
                      ((val & 0x000000FF) << 24);
-        }
     }
 
-    // 4. Descarrega o buffer final completo para a RAM física antes do FatFS criar o arquivo no SD
-    data_cache_hit_writeback(buffer, 128 * 1024);
+    // 6. Força o cache a descarregar os dados invertidos antes do FatFS criar o arquivo no SD
+    data_cache_hit_writeback( buffer, 128 * 1024);
 
-    // 5. Restaura as latências padrão do EverDrive
+    // 7. Restaura as latências padrão do EverDrive
     restoreTiming();
     return 1;
 }
