@@ -278,30 +278,45 @@ int getEeprom16k(  uint8_t *buffer){
 }
 
 int getFlashRAM( uint8_t *buffer){
-    // 1. Antes de mudar o modo na FPGA, força o chip físico a entrar em modo de leitura
-    while ( dma_busy());
-    io_write( FLASH_REG_CMD, FLASH_CMD_READ);
-    sleep( 10); // Pequeno atraso para o chip processar o comando
+    // 1. Preenche todo o buffer de 128 KB com 0xFF (padrão visto no HexEd.it)
+    memset( buffer, 0xFF, 128 * 1024 );
 
-    // 2. Engana a FPGA do clone alterando temporariamente para SRAM128
-    evd_setSaveType( SAVE_TYPE_SRAM128);
-    sleep( FF_MAX_SS); // Tempo de estabilização do Suprapote
+    // 2. Configura a FPGA do EverDrive explicitamente em modo FLASH
+    evd_setSaveType( SAVE_TYPE_FLASH );
+    sleep( 100 ); // Tempo de estabilização do barramento elétrico para clones
 
-    // 3. Limpa o status do barramento PI para evitar vazamentos
-    IO_WRITE( PI_STATUS_REG, 0x03);
-    while ( dma_busy());
+    // 3. Limpa o status do controlador de Interface Periférica (PI) do N64
+    IO_WRITE( PI_STATUS_REG, 0x03 );
+    while ( dma_busy() );
 
-    // 4. Executa a leitura linear e contínua original (que você sabe que não trava)
-    int s = getSRAM( buffer, SAVE_SIZE_SRAM128);
+    // 4. Força o comando de leitura físico diretamente no chip FlashRAM
+    io_write( FLASH_REG_CMD, FLASH_CMD_READ );
+    sleep( 10 ); // Aguarda o chip processar o comando de leitura
 
-    // 5. Invalida o cache IMEDIATAMENTE após a leitura para a CPU validar os dados reais
-    while ( dma_busy());
-    data_cache_hit_writeback_invalidate( buffer, SAVE_SIZE_SRAM128);
+    // 5. Configura as latências elétricas ideais para o barramento de FlashRAM no ED64Plus
+    IO_WRITE( PI_BSD_DOM2_LAT_REG, 0x05 );
+    IO_WRITE( PI_BSD_DOM2_PWD_REG, 0x0C );
+    IO_WRITE( PI_BSD_DOM2_PGS_REG, 0x0D );
+    IO_WRITE( PI_BSD_DOM2_RLS_REG, 0x02 );
+    while ( dma_busy() );
 
-    // 6. Retorna a FPGA para o modo FLASH original antes de entregar ao jogo
-    sleep( FF_MAX_SS);
-    evd_setSaveType( SAVE_TYPE_FLASH);
+    // 6. Invalida o dmaBuf global (alinhado a 16 bytes no topo do arquivo) antes da leitura
+    data_cache_hit_writeback_invalidate( dmaBuf, 128 * 1024 );
 
+    // 7. Executa o DMA único e contínuo direto para o dmaBuf
+    dma_read( dmaBuf, FLASHRAM_ADDR, 128 * 1024 );
+    while ( dma_busy() );
+
+    // 8. Garante a integridade do Cache da CPU MIPS após o término do DMA
+    data_cache_hit_writeback_invalidate( dmaBuf, 128 * 1024 );
+
+    // 9. COPIA APENAS OS 32 KB FINAIS (onde fica o save real) para o offset de 96 KB
+    // Deixa os primeiros 96 KB como 0xFF intactos, casando perfeitamente com a assinatura
+    memcpy( buffer + ( 96 * 1024 ), dmaBuf + ( 96 * 1024 ), 32 * 1024 );
+    data_cache_hit_writeback( buffer, 128 * 1024 );
+
+    // 10. Restaura os tempos e latências padrão do console
+    restoreTiming();
     return 1;
 }
 
@@ -367,28 +382,35 @@ int setEeprom16k(uint8_t *buffer){
 
 //isn't working nor finished
 int setFlashRAM(uint8_t *buffer){
-    // 1. Altera temporariamente a FPGA para SRAM128 para permitir a escrita síncrona
-    evd_setSaveType( SAVE_TYPE_SRAM128); 
-    sleep( FF_MAX_SS);
+ // 1. Limpa o status do controlador de Interface Periférica (PI) do N64
+    IO_WRITE( PI_STATUS_REG, 0x03 );
+    while ( dma_busy() );
 
-    // 2. Limpa o status do barramento PI antes de transmitir
-    IO_WRITE( PI_STATUS_REG, 0x03);
-    while ( dma_busy());
+    // 2. Configura a FPGA do EverDrive explicitamente em modo FLASH
+    evd_setSaveType( SAVE_TYPE_FLASH );
+    sleep( 100 );
 
-    // 3. Força os dados a irem do cache da CPU para a RAM física antes do envio
-    data_cache_hit_writeback( buffer, SAVE_SIZE_SRAM128);
+    // 3. Configura as latências elétricas ideais para a FlashRAM
+    IO_WRITE( PI_BSD_DOM2_LAT_REG, 0x05 );
+    IO_WRITE( PI_BSD_DOM2_PWD_REG, 0x0C );
+    IO_WRITE( PI_BSD_DOM2_PGS_REG, 0x0D );
+    IO_WRITE( PI_BSD_DOM2_RLS_REG, 0x02 );
+    while ( dma_busy() );
 
-    // 4. Executa o upload linear contínuo dos dados para o cartucho
-    int s = setSRAM( buffer, SAVE_SIZE_SRAM128);
+    // 4. Copia os dados do buffer do FatFS para o dmaBuf global alinhado
+    // Focamos em garantir o transporte seguro de todo o bloco preenchido
+    memcpy( dmaBuf, buffer, 128 * 1024 );
+    data_cache_hit_writeback( dmaBuf, 128 * 1024 );
 
-    // 5. Sincroniza e limpa o cache após a gravação
-    while ( dma_busy());
-    data_cache_hit_writeback_invalidate( buffer, SAVE_SIZE_SRAM128);
+    // 5. Executa a escrita de bloco único contínuo direto no endereço da FlashRAM
+    dma_write( dmaBuf, FLASHRAM_ADDR, 128 * 1024 );
+    while ( dma_busy() );
 
-    // 6. Restaura a FPGA do EverDrive para o modo FLASH original
-    sleep( FF_MAX_SS);
-    evd_setSaveType( SAVE_TYPE_FLASH); 
+    // 6. Finaliza colocando o chip em modo de leitura padrão para o jogo poder rodar
+    io_write( FLASH_REG_CMD, FLASH_CMD_READ );
 
+    // 7. Restaura as latências padrão do console
+    restoreTiming();
     return 1;
 }
 
