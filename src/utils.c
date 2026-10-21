@@ -305,16 +305,9 @@ int getSRAMtoFlashRAM( uint8_t *buffer, int size){
     sleep(250); //TODO: really... 1 second, changed to 250ms... better check it still works!
 
     while (dma_busy()) ;
-
-    if (size >= SAVE_SIZE_SRAM)
-    {
-        PI_DMAFromSRAM(buffer, 0 - (64 * 1024), size);
-    }
-    else
-    {
-        PI_DMAFromSRAM(buffer, 0, size);
-    }
-
+    
+    PI_DMAFromSRAM(buffer, 0 - (64 * 1024), size);
+    
     while (dma_busy()) ;
 
     IO_WRITE(PI_BSD_DOM2_LAT_REG, 0x40);
@@ -410,14 +403,7 @@ int setSRAMtoFlashRAM(  uint8_t *buffer,int size){
 
     data_cache_hit_writeback_invalidate(buffer,size);
     while (dma_busy());
-    if (size >= SAVE_SIZE_SRAM)
-    {
-        PI_DMAToSRAM(buffer, 0 - (64 * 1024), size);
-    }
-    else
-    {
-        PI_DMAToSRAM(buffer, 0, size);
-    }
+    PI_DMAToSRAM(buffer, 0 - (64 * 1024), size);
     data_cache_hit_writeback_invalidate(buffer,size);
 
     //Wait
