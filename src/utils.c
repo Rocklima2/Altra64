@@ -306,14 +306,14 @@ int getSRAMtoFlashRAM( uint8_t *buffer, int size){
 
     while (dma_busy()) ;
 
-    if (size > SAVE_SIZE_SRAM)
+   /* if (size > SAVE_SIZE_SRAM)
     {
         PI_DMAFromSRAM(buffer, 0 - (64 * 1024), size);
     }
     else
-    {
+    {*/
         PI_DMAFromSRAM(buffer, 0, size);
-    }
+   // }
 
     while (dma_busy()) ;
 
@@ -410,14 +410,14 @@ int setSRAMtoFlashRAM(  uint8_t *buffer,int size){
 
     data_cache_hit_writeback_invalidate(buffer,size);
     while (dma_busy());
-    if (size > SAVE_SIZE_SRAM)
+   /* if (size > SAVE_SIZE_SRAM)
     {
         PI_DMAToSRAM(buffer, 0 - (64 * 1024), size);
     }
     else
-    {
+    {*/
         PI_DMAToSRAM(buffer, 0, size);
-    }
+   // }
     data_cache_hit_writeback_invalidate(buffer,size);
 
     //Wait
