@@ -291,6 +291,10 @@ int getFlashRAM( uint8_t *buffer){
 }
 
 int getSRAMtoFlashRAM( uint8_t *buffer, int size){
+
+    if (size > 0) {
+       memset(buffer, 0xFF, size);
+    }
     while (dma_busy()) ;
 
     IO_WRITE(PI_BSD_DOM2_LAT_REG, 0x05);
