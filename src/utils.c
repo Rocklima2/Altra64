@@ -297,7 +297,13 @@ int getSRAMtoFlashRAM( uint8_t *buffer, int size){
     IO_WRITE(PI_BSD_DOM2_PWD_REG, 0x0C);
     IO_WRITE(PI_BSD_DOM2_PGS_REG, 0x0D);
     IO_WRITE(PI_BSD_DOM2_RLS_REG, 0x02);
+    //rotina 3
+    while ( dma_busy()) ;
 
+    // 3. Força o comando de ativação física de leitura diretamente no chip de Flash
+    io_write( FLASH_REG_CMD, FLASH_CMD_READ);
+    sleep( 10); // Pequeno atraso para as células de memória acordarem
+    // rotina 3
     while (dma_busy()) ;
 
     PI_Init();
@@ -306,14 +312,7 @@ int getSRAMtoFlashRAM( uint8_t *buffer, int size){
 
     while (dma_busy()) ;
 
-   /* if (size > SAVE_SIZE_SRAM)
-    {
-        PI_DMAFromSRAM(buffer, 0 - (64 * 1024), size);
-    }
-    else
-    {*/
-        PI_DMAFromSRAM(buffer, 0, size);
-   // }
+    PI_DMAFromSRAM(buffer, 0 - (64 * 1024), size);
 
     while (dma_busy()) ;
 
@@ -407,21 +406,20 @@ int setSRAMtoFlashRAM(  uint8_t *buffer,int size){
 
     //Readmode
     PI_Init();
-
+    // 3. Força o comando físico de habilitação de escrita no chip FlashRAM
+    io_write( FLASH_REG_CMD, FLASH_CMD_WRITE);
+    sleep( 10); //3
+    
     data_cache_hit_writeback_invalidate(buffer,size);
     while (dma_busy());
-   /* if (size > SAVE_SIZE_SRAM)
-    {
-        PI_DMAToSRAM(buffer, 0 - (64 * 1024), size);
-    }
-    else
-    {*/
-        PI_DMAToSRAM(buffer, 0, size);
-   // }
+  
+    PI_DMAToSRAM(buffer, 0 - (64 * 1024), size);
+
     data_cache_hit_writeback_invalidate(buffer,size);
 
     //Wait
     PI_DMAWait();
+    io_write( FLASH_REG_CMD, FLASH_CMD_READ); //3
     //Restore evd Timing
     setSDTiming();
 
