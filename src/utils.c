@@ -6,7 +6,7 @@
 
 #include <string.h>
 #include <libdragon.h>
-
+#include <stdio.h>
 #include "everdrive.h"
 #include "sys.h"
 #include "types.h"
@@ -306,7 +306,7 @@ int getSRAMtoFlashRAM( uint8_t *buffer, int size){
     while (dma_busy()) ;
 
     PI_Init();
-   
+    printf("%d\n", size);
     sleep(250); //TODO: really... 1 second, changed to 250ms... better check it still works!
 
     while (dma_busy()) ;
@@ -408,7 +408,8 @@ int setSRAMtoFlashRAM(  uint8_t *buffer,int size){
     
     io_write( FLASH_REG_CMD, FLASH_CMD_WRITE);
     sleep( 10); //3
-    
+    printf("%d\n", size);
+    sleep(250);
     data_cache_hit_writeback_invalidate(buffer,size);
     while (dma_busy());
   
