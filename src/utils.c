@@ -307,7 +307,7 @@ int getSRAMtoFlashRAM( uint8_t *buffer, int size){
     while (dma_busy()) ;
 
     PI_Init();
-    printf("%s\n", *cartIDs[i]);
+   
     sleep(250); //TODO: really... 1 second, changed to 250ms... better check it still works!
 
     while (dma_busy()) ;
@@ -315,6 +315,28 @@ int getSRAMtoFlashRAM( uint8_t *buffer, int size){
     PI_DMAFromSRAM(buffer, 0 - (64 * 1024), size);
 
     while (dma_busy()) ;
+
+    // =========================================================================
+    // PROTEÇÃO POR ID: Inversão síncrona EXCLUSIVA para Pokémon Snap
+    // Lemos os caracteres identificadores da ROM no endereço 0xB000003B
+    // =========================================================================
+    char id_byte1 = *(volatile char *)0xB000003B;
+    char id_byte2 = *(volatile char *)0xB000003C;
+
+    // Se for Pokémon Snap (PN = US/JP, NF = PAL)
+    if ((id_byte1 == 'P' && id_byte2 == 'N') || (id_byte1 == 'N' && id_byte2 == 'F')) {
+        uint32_t *words = (uint32_t *)buffer;
+        int total_words = size / 4;
+        
+        for (int i = 0; i < total_words; i++) {
+            uint32_t value = words[i];
+            words[i] = ((value & 0xFF000000) >> 24) |
+                       ((value & 0x00FF0000) >> 8)  |
+                       ((value & 0x0000FF00) << 8)  |
+                       ((value & 0x000000FF) << 24);
+        }
+        data_cache_hit_writeback( buffer, size);
+    }
 
     IO_WRITE(PI_BSD_DOM2_LAT_REG, 0x40);
     IO_WRITE(PI_BSD_DOM2_PWD_REG, 0x12);
@@ -406,9 +428,30 @@ int setSRAMtoFlashRAM(  uint8_t *buffer,int size){
 
     //Readmode
     PI_Init();
+
+    // =========================================================================
+    // PROTEÇÃO POR ID: Desfaz a inversão no boot EXCLUSIVAMENTE para Pokémon Snap
+    // =========================================================================
+    char id_byte1 = *(volatile char *)0xB000003B;
+    char id_byte2 = *(volatile char *)0xB000003C;
+
+    if ((id_byte1 == 'P' && id_byte2 == 'N') || (id_byte1 == 'N' && id_byte2 == 'F')) {
+        uint32_t *words = (uint32_t *)buffer;
+        int total_words = size / 4;
+        
+        for (int i = 0; i < total_words; i++) {
+            uint32_t value = words[i];
+            words[i] = ((value & 0xFF000000) >> 24) |
+                       ((value & 0x00FF0000) >> 8)  |
+                       ((value & 0x0000FF00) << 8)  |
+                       ((value & 0x000000FF) << 24);
+        }
+    }
+
+    
     // 3. Força o comando físico de habilitação de escrita no chip FlashRAM
     io_write( FLASH_REG_CMD, FLASH_CMD_WRITE);
-    printf("%s\n", *cartIDs[i]);
+    
     sleep( 10); //3
     
     data_cache_hit_writeback_invalidate(buffer,size);
