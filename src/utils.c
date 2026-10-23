@@ -6,7 +6,7 @@
 
 #include <string.h>
 #include <libdragon.h>
-#include <stdio.h>
+
 #include "everdrive.h"
 #include "sys.h"
 #include "types.h"
@@ -300,16 +300,14 @@ int getSRAMtoFlashRAM( uint8_t *buffer, int size){
     //rotina 3
     while ( dma_busy()) ;
 
-    // 3. Força o comando de ativação física de leitura diretamente no chip de Flash
-    //io_write( FLASH_REG_CMD, FLASH_CMD_READ);
-    IO_WRITE( PI_STATUS_REG, 0x03);
+    io_write( FLASH_REG_CMD, FLASH_CMD_READ);
     sleep(10); // Pequeno atraso para as células de memória acordarem
-    // rotina 3
+    
     while (dma_busy()) ;
 
     PI_Init();
    
-    sleep(500); //TODO: really... 1 second, changed to 250ms... better check it still works!
+    sleep(250); //TODO: really... 1 second, changed to 250ms... better check it still works!
 
     while (dma_busy()) ;
 
@@ -408,10 +406,7 @@ int setSRAMtoFlashRAM(  uint8_t *buffer,int size){
     //Readmode
     PI_Init();
     
-    // 3. Força o comando físico de habilitação de escrita no chip FlashRAM
-    //io_write( FLASH_REG_CMD, FLASH_CMD_WRITE);
-    // 3. Reseta o controlador PI antes de enviar dados para garantir canal limpo
-    IO_WRITE( PI_STATUS_REG, 0x03);
+    io_write( FLASH_REG_CMD, FLASH_CMD_WRITE);
     sleep( 10); //3
     
     data_cache_hit_writeback_invalidate(buffer,size);
