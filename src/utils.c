@@ -307,7 +307,7 @@ int getSRAMtoFlashRAM( uint8_t *buffer, int size){
     while (dma_busy()) ;
 
     PI_Init();
-
+    printf("%s\n", cartIDs[i]);
     sleep(250); //TODO: really... 1 second, changed to 250ms... better check it still works!
 
     while (dma_busy()) ;
@@ -408,6 +408,7 @@ int setSRAMtoFlashRAM(  uint8_t *buffer,int size){
     PI_Init();
     // 3. Força o comando físico de habilitação de escrita no chip FlashRAM
     io_write( FLASH_REG_CMD, FLASH_CMD_WRITE);
+    printf("%s\n", cartIDs[i]);
     sleep( 10); //3
     
     data_cache_hit_writeback_invalidate(buffer,size);
