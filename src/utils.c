@@ -6,7 +6,7 @@
 
 #include <string.h>
 #include <libdragon.h>
-
+#include <stdio.h>
 #include "everdrive.h"
 #include "sys.h"
 #include "types.h"
