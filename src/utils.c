@@ -316,23 +316,6 @@ int getSRAMtoFlashRAM( uint8_t *buffer, int size){
 
     while (dma_busy()) ;
 
-    // =========================================================================
-    // PROTEÇÃO POR ID: Inversão síncrona EXCLUSIVA para Pokémon Snap
-    // Lemos os caracteres identificadores da ROM no endereço 0xB000003B
-    // =========================================================================
-
-        uint32_t *words = (uint32_t *)buffer;
-        int total_words = size / 4;
-        
-        for (int i = 0; i < total_words; i++) {
-            uint32_t value = words[i];
-            words[i] = ((value & 0xFF000000) >> 24) |
-                       ((value & 0x00FF0000) >> 8)  |
-                       ((value & 0x0000FF00) << 8)  |
-                       ((value & 0x000000FF) << 24);
-        }
-        data_cache_hit_writeback( buffer, size);
-
     IO_WRITE(PI_BSD_DOM2_LAT_REG, 0x40);
     IO_WRITE(PI_BSD_DOM2_PWD_REG, 0x12);
     IO_WRITE(PI_BSD_DOM2_PGS_REG, 0x07);
@@ -423,22 +406,6 @@ int setSRAMtoFlashRAM(  uint8_t *buffer,int size){
 
     //Readmode
     PI_Init();
-
-    // =========================================================================
-    // PROTEÇÃO POR ID: Desfaz a inversão no boot EXCLUSIVAMENTE para Pokémon Snap
-    // =========================================================================
-
-        uint32_t *words = (uint32_t *)buffer;
-        int total_words = size / 4;
-        
-        for (int i = 0; i < total_words; i++) {
-            uint32_t value = words[i];
-            words[i] = ((value & 0xFF000000) >> 24) |
-                       ((value & 0x00FF0000) >> 8)  |
-                       ((value & 0x0000FF00) << 8)  |
-                       ((value & 0x000000FF) << 24);
-        }
-
     
     // 3. Força o comando físico de habilitação de escrita no chip FlashRAM
     io_write( FLASH_REG_CMD, FLASH_CMD_WRITE);
