@@ -2466,42 +2466,42 @@ void bootRom(display_context_t disp, int silent)
         {
             gCheats = 0;
         }
-/* removed because it doesn't work and deletes the save file
-        if (boot_save != 0)
-        {
-            TCHAR cfg_file[MAX_SUPPORTED_PATH_LEN];
+// removed because it doesn't work and deletes the save file
+//        if (boot_save != 0)
+//        {
+//            TCHAR cfg_file[MAX_SUPPORTED_PATH_LEN];
+//
+//           //set cfg file with last loaded cart info and save-type
+//            sprintf(cfg_file, "/"ED64_FIRMWARE_PATH"/%s/LASTROM.CFG", save_path);
 
-            //set cfg file with last loaded cart info and save-type
-            sprintf(cfg_file, "/"ED64_FIRMWARE_PATH"/%s/LASTROM.CFG", save_path);
+//            FRESULT result;
+//            FIL file;
+//            result = f_open(&file, cfg_file, FA_WRITE | FA_CREATE_ALWAYS);
 
-            FRESULT result;
-            FIL file;
-            result = f_open(&file, cfg_file, FA_WRITE | FA_CREATE_ALWAYS);
-
-            if (result == FR_OK)
-            {
-                uint8_t cfg_data[2] = {boot_save, boot_cic};
+//            if (result == FR_OK)
+//            {
+//                uint8_t cfg_data[2] = {boot_save, boot_cic};
 
 
-                UINT bw;
-                result = f_write (
-                    &file,          /* [IN] Pointer to the file object structure */
-                    &cfg_data, /* [IN] Pointer to the data to be written */
-                    2,         /* [IN] Number of bytes to write */
-                    &bw          /* [OUT] Pointer to the variable to return number of bytes written */
-                  );
+//                UINT bw;
+//                result = f_write (
+//                    &file,          /* [IN] Pointer to the file object structure */
+//                    &cfg_data, /* [IN] Pointer to the data to be written */
+//                    2,         /* [IN] Number of bytes to write */
+//                    &bw          /* [OUT] Pointer to the variable to return number of bytes written */
+//                  );
 
-                f_puts(rom_filename, &file);
+//                f_puts(rom_filename, &file);
 
-                f_close(&file);
+//                f_close(&file);
 
                 //set the fpga cart-save type
-                evd_setSaveType(boot_save);
+//                evd_setSaveType(boot_save);
 
-                saveTypeFromSd(disp, rom_filename, boot_save);
-            }
-        }
-		*/
+//                saveTypeFromSd(disp, rom_filename, boot_save);
+//            }
+//        } removed because it doesn't work and deletes the save file
+		
 
         TRACE(disp, "Cartridge-Savetype set");
         TRACE(disp, "information stored for reboot-save...");
