@@ -2466,7 +2466,7 @@ void bootRom(display_context_t disp, int silent)
         {
             gCheats = 0;
         }
-
+/* removed because it doesn't work and deletes the save file
         if (boot_save != 0)
         {
             TCHAR cfg_file[MAX_SUPPORTED_PATH_LEN];
@@ -2501,6 +2501,7 @@ void bootRom(display_context_t disp, int silent)
                 saveTypeFromSd(disp, rom_filename, boot_save);
             }
         }
+		*/
 
         TRACE(disp, "Cartridge-Savetype set");
         TRACE(disp, "information stored for reboot-save...");
