@@ -5148,14 +5148,25 @@ int main(void)
 
         if (fast_boot)
 		{
-			// 💡 SOLUÇÃO FINAL: Lê o registrador elétrico de Reset do N64
-            // Bit 4 ativo (valor decimal/hex correspondente) = Botão RESET foi pressionado
-            if (*(volatile uint32_t *)0xA4600010 & 4)
-            {
-				backupSaveData(disp);
-				while (!(disp = display_lock()))
-					;
-			}	
+   			 // 1. Lê o registrador de status do PI (Status de Hardware)
+    		// O Bit 2 (valor 4) indica especificamente o sinal de RESET vindo do botão.
+    		uint32_t pi_status = *(volatile uint32_t *)0xA460000C;
+
+    		// 2. Só executa se o bit de RESET estiver ativo E o barramento estiver estável
+    		// Isso ignora completamente o Cold Boot (ligar o console) e o desligamento forçado (0xFFFFFFFF)
+    	   if ((pi_status & 4) && (pi_status != 0xFFFFFFFF))
+    	   {
+        		// Debounce rápido para confirmar a estabilidade do sinal elétrico
+       			 for (volatile int i = 0; i < 5000; i++) { __asm__("nop"); }
+        
+        		// Confirma se o botão Reset continua pressionado/sinalizado
+        	  if (*(volatile uint32_t *)0xA460000C & 4)
+        	  {
+            	backupSaveData(disp);
+            	while (!(disp = display_lock()))
+                ;
+              }
+           }	
 		}
 
         sprintf(pwd, "%s", "/");
