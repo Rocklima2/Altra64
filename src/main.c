@@ -5148,9 +5148,14 @@ int main(void)
 
         if (fast_boot)
 		{
-			backupSaveData(disp);
-			while (!(disp = display_lock()))
-				;
+			// 💡 SOLUÇÃO FINAL: Lê o registrador elétrico de Reset do N64
+            // Bit 4 ativo (valor decimal/hex correspondente) = Botão RESET foi pressionado
+            if (*(volatile uint32_t *)0xA4600010 & 4)
+            {
+				backupSaveData(disp);
+				while (!(disp = display_lock()))
+					;
+			}	
 		}
 
         sprintf(pwd, "%s", "/");
