@@ -413,7 +413,7 @@ int setSRAMtoFlashRAM(  uint8_t *buffer,int size){
     while (dma_busy());
   
     //PI_DMAToSRAM(buffer, 0 - (64 * 1024), size);
-    PI_DMAToSRAM(buffer, 0 - (96 * 1024), size);
+    PI_DMAToSRAM(buffer, 0 - (128 * 1024), size);
 
     data_cache_hit_writeback_invalidate(buffer,size);
 
