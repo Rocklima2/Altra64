@@ -5148,42 +5148,12 @@ int main(void)
 
         if (fast_boot)
 		{
-		 	// Define um endereço seguro na RAM do N64 para armazenar nossa assinatura lógica
-		    // Usamos o final do primeiro megabyte (0x800FFFF0) que é seguro e não conflita com o Altra64
-		    #define MAGIC_ADDRESS  0x800FFFF0
-		    #define MAGIC_WORD     0x53415645 // "SAVE" em Hexadecimal
-		
-		    uint32_t *ram_signature = (uint32_t *)MAGIC_ADDRESS;
-		    uint32_t pi_status = *(volatile uint32_t *)0xA460000C;
-		
-		    // SÓ executa se:
-		    // 1. O registrador elétrico indicar Reset (& 4)
-		    // 2. A assinatura de software "SAVE" estiver intacta na RAM (provando que o console já estava ligado e tomou um Reset)
-		    // 3. O barramento não estiver flutuando/desligando (diferente de 0xFFFFFFFF)
-		    if ((pi_status & 4) && (*ram_signature == MAGIC_WORD) && (pi_status != 0xFFFFFFFF))
-		    {
-		        // Reseta a assinatura temporariamente para evitar loops infinitos de escrita
-		        *ram_signature = 0;
-		
-		        // Debounce elétrico para garantir estabilidade
-		        for (volatile int i = 0; i < 5000; i++) { __asm__("nop"); }
-		        
-		        if (*(volatile uint32_t *)0xA460000C & 4)
-		        {
-		            evd_init();
-		            backupSaveData(disp);
-		            while (!(disp = display_lock()))
-		                ;
-		        }
-		    }
-		    else
-		    {
-		        // COLD BOOT / POWER ON detectado (Mesmo com a fonte ligada na tomada):
-		        // Como o console acabou de ligar, a RAM inicializou limpa ou com lixo.
-		        // Gravamos a assinatura "SAVE" na RAM agora. 
-		        // Ela ficará guardada e viva para quando você pressionar o botão RESET de verdade.
-		        *ram_signature = MAGIC_WORD;
-		    }
+            if (*(volatile uint32_t *)0xA4600010 & 4)
+            {
+                backupSaveData(disp);
+                while (!(disp = display_lock()))
+                    ;
+            }
 		}
 
         sprintf(pwd, "%s", "/");
