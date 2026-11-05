@@ -312,7 +312,7 @@ int getSRAMtoFlashRAM( uint8_t *buffer, int size){
     while (dma_busy()) ;
 
     //PI_DMAFromSRAM(buffer, 0 - (64 * 1024), size);
-    PI_DMAFromSRAM(buffer, 0, size); ;
+    PI_DMAFromSRAM( buffer, 0 - ( 128 * 1024 ), size ); ;
     while (dma_busy()) ;
 
     IO_WRITE(PI_BSD_DOM2_LAT_REG, 0x40);
@@ -413,13 +413,14 @@ int setSRAMtoFlashRAM(  uint8_t *buffer,int size){
     while (dma_busy());
   
     //PI_DMAToSRAM(buffer, 0 - (64 * 1024), size);
-    PI_DMAToSRAM(buffer, 0, size); 
+    PI_DMAToSRAM( buffer, 0 - ( 128 * 1024 ), size ); 
 
     data_cache_hit_writeback_invalidate(buffer,size);
 
     //Wait
     PI_DMAWait();
     io_write( FLASH_REG_CMD, FLASH_CMD_READ); //3
+    sleep( 100 );
     //Restore evd Timing
     setSDTiming();
 
