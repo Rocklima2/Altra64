@@ -5148,12 +5148,9 @@ int main(void)
 
         if (fast_boot)
 		{
-            if (*(volatile uint32_t *)0xA4600010 & 4)
-            {
-                backupSaveData(disp);
-                while (!(disp = display_lock()))
-                    ;
-            }
+			backupSaveData(disp);
+			while (!(disp = display_lock()))
+				;
 		}
 
         sprintf(pwd, "%s", "/");
