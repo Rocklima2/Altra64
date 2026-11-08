@@ -1027,7 +1027,11 @@ void romInfoScreen(display_context_t disp, u8 *buff, int silent)
                 //not found
                 sprintf(box_path, "/"ED64_FIRMWARE_PATH"/boxart/lowres/00.png");
             }
-
+            
+			if (n64cover != NULL)
+				free(n64cover);
+			
+			n64cover = NULL;
             n64cover = loadPng(box_path);
             graphics_draw_sprite(disp, 81, 32, n64cover);
             display_show(disp);
