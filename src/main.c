@@ -1061,6 +1061,8 @@ sprite_t *loadPng(u8 *png_filename)
     UINT bytesread;
     result = f_open(&file, filename, FA_READ);
 
+	free(filename);
+	
     if (result == FR_OK)
     {
         int fsize = f_size(&file);
@@ -1076,7 +1078,6 @@ sprite_t *loadPng(u8 *png_filename)
 
         f_close(&file);
 
-        free(filename);
         return loadImage32(png_rawdata, fsize);
     }
 
