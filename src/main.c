@@ -1577,7 +1577,7 @@ void loadrom(display_context_t disp, u8 *buff, int fast)
         }
 
         //new rom_config
-        boot_cic = rom_config[1] + 1;
+        boot_cic =  (rom_config[1] + 1 != 0) ? rom_config[1] + 1 : cic;
         boot_save = (rom_config[2] != 0) ? rom_config[2] : save;
         force_tv = rom_config[3];
         cheats_on = rom_config[4];
