@@ -1053,20 +1053,21 @@ void romInfoScreen(display_context_t disp, u8 *buff, int silent)
 
 sprite_t *loadPng(u8 *png_filename)
 {
-    TCHAR *filename = (TCHAR *)malloc(slen(png_filename));
-    sprintf(filename, "%s", png_filename);
+    //TCHAR *filename = (TCHAR *)malloc(slen(png_filename));
+    //sprintf(filename, "%s", png_filename);
 
     FRESULT result;
     FIL file;
     UINT bytesread;
-    result = f_open(&file, filename, FA_READ);
+    result = f_open(&file, (const TCHAR *)png_filename, FA_READ);
 
 	free(filename);
 	
     if (result == FR_OK)
     {
         int fsize = f_size(&file);
-        u8 png_rawdata[fsize];
+        //u8 png_rawdata[fsize];
+		u8 png_rawdata = (u8 *)malloc(fsize);
 
         result =
         f_read (
