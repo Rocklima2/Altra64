@@ -1232,7 +1232,7 @@ void loadggrom(display_context_t disp, TCHAR *rom_path) //TODO: this could be me
             FRESULT result;
             FIL file;
             UINT bytesread;
-            result = f_open(&file, "/"ED64_FIRMWARE_PATH"/UltraSMS.z64", FA_READ);
+            result = f_open(&file, "/"ED64_FIRMWARE_PATH"/smsPlus64.z64", FA_READ);
         
             if (result == FR_OK)
             {
@@ -3374,7 +3374,7 @@ void loadFile(display_context_t disp)
         ft = 3;
     else if (!strcmp(extension, "NES"))
         ft = 4;
-    else if (!strcmp(extension, "GG"))
+    else if (!strcmp(extension, "GG") ||!strcmp(extension, "SMS"))
         ft = 5;
     else if (!strcmp(extension, "MSX") || !strcmp(extension, "ROM"))
         ft = 6;
