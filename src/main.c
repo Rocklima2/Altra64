@@ -990,7 +990,7 @@ void romInfoScreen(display_context_t disp, u8 *buff, int silent)
                 sprintf(save_type_str, savetypeinf, saveTypeToExtension(save, ext_type));
                 printText(save_type_str, 11, -1, disp);
 
-                unsigned char cic_type_str[12];
+                unsigned char cic_type_str[14];
 
                 switch (cic)
                 {
@@ -1013,9 +1013,9 @@ void romInfoScreen(display_context_t disp, u8 *buff, int silent)
 
         if (silent != 1)
         {
-            char box_path[32];
+            char box_path[64];
 
-            sprite_t *n64cover;
+            sprite_t *n64cover = NULL;
 
             sprintf(box_path, "/"ED64_FIRMWARE_PATH"/boxart/lowres/%c%c.png", headerdata[0x3C], headerdata[0x3D]);
 
@@ -1027,13 +1027,14 @@ void romInfoScreen(display_context_t disp, u8 *buff, int silent)
                 //not found
                 sprintf(box_path, "/"ED64_FIRMWARE_PATH"/boxart/lowres/00.png");
             }
-            
+
+			n64cover = loadPng(box_path);
 			if (n64cover != NULL)
-				free(n64cover);
-			
-			n64cover = NULL;
-            n64cover = loadPng(box_path);
-            graphics_draw_sprite(disp, 81, 32, n64cover);
+			{
+				graphics_draw_sprite(disp, 81, 32, n64cover);
+				free(n64cover);		
+			}
+            
             display_show(disp);
         }
         else
@@ -1215,8 +1216,8 @@ void loadggrom(display_context_t disp, TCHAR *rom_path) //TODO: this could be me
     {
         int romfsize = f_size(&romfile);
 
-        //max 512KB rom
-        if (romfsize > 512 * 1024)
+        //max 1024KB rom
+        if (romfsize > 1024 * 1024)
         {
             //error
 
@@ -1253,7 +1254,7 @@ void loadggrom(display_context_t disp, TCHAR *rom_path) //TODO: this could be me
                 romresult =
                 f_read (
                     &romfile,           /* [IN] File object */
-                    (void *)0xb0200000 + 0x1b410,  /* [OUT] Buffer to store read data */ //TODO: why is the offset this particular number
+                    (void *)0xb0200000,  /* [OUT] Buffer to store read data */ //TODO: why is the offset this particular number
                     romfsize,           /* [IN] Number of bytes to read */
                     &rombytesread       /* [OUT] Number of bytes read */
                 );
@@ -1267,7 +1268,7 @@ void loadggrom(display_context_t disp, TCHAR *rom_path) //TODO: this could be me
                 cheats_on = 0; //cheats off
                 checksum_fix_on = 0;
             
-                checksum_sdram();
+                //checksum_sdram();
                 bootRom(disp, 1);
             }
         }
