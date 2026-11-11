@@ -1067,6 +1067,11 @@ sprite_t *loadPng(u8 *png_filename)
         //u8 png_rawdata[fsize];
 		u8 *png_rawdata = (u8 *)malloc(fsize);
 
+		if (png_rawdata == NULL) {
+            f_close(&file);
+            return 0;
+        }
+
         result =
         f_read (
             &file,        /* [IN] File object */
@@ -1076,12 +1081,12 @@ sprite_t *loadPng(u8 *png_filename)
         );
 
         f_close(&file);
-
-        return loadImage32(png_rawdata, fsize);
+        sprite_t *sprite = loadImage32(png_rawdata, (int)fsize);
+        free(png_rawdata); 
+        return sprite;
     }
 
     return 0;
-
 
 }
 
