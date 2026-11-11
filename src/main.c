@@ -1060,8 +1060,6 @@ sprite_t *loadPng(u8 *png_filename)
     FIL file;
     UINT bytesread;
     result = f_open(&file, (const TCHAR *)png_filename, FA_READ);
-
-	free(filename);
 	
     if (result == FR_OK)
     {
