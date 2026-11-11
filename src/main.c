@@ -1067,7 +1067,7 @@ sprite_t *loadPng(u8 *png_filename)
     {
         int fsize = f_size(&file);
         //u8 png_rawdata[fsize];
-		u8 png_rawdata = (u8 *)malloc(fsize);
+		u8 *png_rawdata = (u8 *)malloc(fsize);
 
         result =
         f_read (
