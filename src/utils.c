@@ -309,13 +309,10 @@ int getSRAMtoFlashRAM( uint8_t *buffer, int size){
    
     sleep(250); //TODO: really... 1 second, changed to 250ms... better check it still works!
     
-    int half = 64 * 1024; //4
-    PI_DMAFromSRAM(buffer, 0 - (128 * 1024), half); //4
-
     while (dma_busy()) ;
 
-    //4 PI_DMAFromSRAM(buffer, 0 - (64 * 1024), size);
-    PI_DMAFromSRAM(buffer + half, 0 - (64 * 1024), half);
+    PI_DMAFromSRAM(buffer, 0 - (64 * 1024), size);
+    
     while (dma_busy()) ;
 
     IO_WRITE(PI_BSD_DOM2_LAT_REG, 0x40);
@@ -410,17 +407,13 @@ int setSRAMtoFlashRAM(  uint8_t *buffer,int size){
     PI_Init();
     
     io_write( FLASH_REG_CMD, FLASH_CMD_WRITE);
-    sleep(10); //3
+    sleep(100); 
 
     data_cache_hit_writeback_invalidate(buffer,size);
-    //4 Grava os primeiros 64KB (offset -128KB) e depois os segundos 64KB (offset -64KB)
-    int half = 64 * 1024;
-    PI_DMAToSRAM(buffer, 0 - (128 * 1024), half);
    
     while (dma_busy());
   
-    //4 PI_DMAToSRAM(buffer, 0 - (64 * 1024), size);
-    PI_DMAToSRAM(buffer + half, 0 - (64 * 1024), half);
+    PI_DMAToSRAM(buffer, 0 - (64 * 1024), size);
 
     data_cache_hit_writeback_invalidate(buffer,size);
 
