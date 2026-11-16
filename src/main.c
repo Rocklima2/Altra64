@@ -1030,7 +1030,12 @@ void romInfoScreen(display_context_t disp, u8 *buff, int silent)
             }
 
             n64cover = loadPng(box_path);
-            graphics_draw_sprite(disp, 81, 32, n64cover);
+			if (n64cover != NULL)
+			{
+				graphics_draw_sprite(disp, 81, 32, n64cover);
+				free(n64cover);		
+			}
+            
             display_show(disp);
         }
         else
@@ -1050,18 +1055,20 @@ void romInfoScreen(display_context_t disp, u8 *buff, int silent)
 
 sprite_t *loadPng(u8 *png_filename)
 {
-    TCHAR *filename = (TCHAR *)malloc(slen(png_filename));
-    sprintf(filename, "%s", png_filename);
-
     FRESULT result;
     FIL file;
     UINT bytesread;
-    result = f_open(&file, filename, FA_READ);
+    result = f_open(&file, (const TCHAR *)png_filename, FA_READ);
 
     if (result == FR_OK)
     {
         int fsize = f_size(&file);
-        u8 png_rawdata[fsize];
+        u8 *png_rawdata = (u8 *)malloc(fsize);
+
+		if (png_rawdata == NULL) {
+            f_close(&file);
+            return 0;
+        }
 
         result =
         f_read (
@@ -1072,9 +1079,9 @@ sprite_t *loadPng(u8 *png_filename)
         );
 
         f_close(&file);
-
-        free(filename);
-        return loadImage32(png_rawdata, fsize);
+        sprite_t *sprite = loadImage32(png_rawdata, (int)fsize);
+        free(png_rawdata); 
+        return sprite;
     }
 
     return 0;
