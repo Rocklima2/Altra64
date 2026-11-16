@@ -1085,8 +1085,6 @@ sprite_t *loadPng(u8 *png_filename)
     }
 
     return 0;
-
-
 }
 
 void loadgenericrom(display_context_t disp, TCHAR *rom_path, u8 *extension)
